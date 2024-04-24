@@ -103,7 +103,7 @@ void *buddy_new(uint32_t split, uint32_t buf_size, void *buf, uint32_t align) {
 }
 
 
-void *buddy_alloc(struct buddy *ctx, uint32_t size) {
+void *buddy_alloc(void *ctx, uint32_t size) {
     struct buddy *bd = ctx;
     void *ptr = NULL;
     uint32_t index = 1;

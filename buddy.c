@@ -11,8 +11,7 @@
 struct buddy {
     void *buf;
     uint32_t buf_size;
-    uint16_t unit_shift;
-    uint16_t split_shift;
+    uint32_t unit;
     uint8_t info[1];
 };
 
@@ -64,18 +63,16 @@ void *buddy_new(uint32_t split, uint32_t buf_size, void *buf, uint32_t align) {
     bd = (struct buddy *) malloc(sizeof(struct buddy) + (1 << (split_shift + 1)));
     bd->buf = buf;
     bd->buf_size = buf_size;
-    bd->split_shift = split_shift;
+    bd->info[0] = split_shift;
 
     n = (1 << (split_shift + 1));
 
     if (!IS_POWER_OF_2(need) && align) {
-        bd->unit_shift = unit_shift;
+        bd->unit = (1 << unit_shift);
     } else {
         need = split;
-        bd->unit_shift = 0;
+        bd->unit = (bd->buf_size >> split_shift);
     }
-
-    bd->info[0] = 0xff;
 
     for (int i = (n >> 1); i < n; i++) {
         if (need > 0) {
@@ -108,20 +105,21 @@ void *buddy_alloc(void *ctx, uint32_t size) {
     void *ptr = NULL;
     uint32_t index = 1;
     uint32_t offset;
-    uint32_t unit, need;
+    uint32_t need;
     uint32_t remain;
     uint32_t min_index;
+    uint32_t split_shift;
 
     if (ctx == NULL || size == 0)
         return ptr;
 
-    unit = bd->unit_shift ? (1 << bd->unit_shift) : (bd->buf_size >> bd->split_shift);
-    need = (size + unit - 1) / unit;
+    split_shift = bd->info[0];
+    need = (size + bd->unit - 1) / bd->unit;
     need = NEXT_POWER_OF_2_SHIFT(need) + 1;
     if (bd->info[index] < need)
         return ptr;
 
-    for (remain = bd->split_shift + 1; remain > need; remain--) {
+    for (remain = split_shift + 1; remain > need; remain--) {
         min_index = bd->info[LEFT_LEAF(index)] >= bd->info[RIGHT_LEAF(index)] ? RIGHT_LEAF(index) : LEFT_LEAF(index);
 
         if (bd->info[min_index] >= need) {
@@ -135,26 +133,26 @@ void *buddy_alloc(void *ctx, uint32_t size) {
     assert(remain > 0);
 
     bd->info[index] = 0;
-    offset = index * (1 << (remain - 1)) - (1 << bd->split_shift);
+    offset = index * (1 << (remain - 1)) - (1 << split_shift);
 
     while (index) {
         index = PARENT(index);
         bd->info[index] = MAX(bd->info[LEFT_LEAF(index)], bd->info[RIGHT_LEAF(index)]);
     }
 
-    ptr = (void *) ((uint8_t *) (bd->buf) + (offset * unit));
+    ptr = (void *) ((uint8_t *) (bd->buf) + (offset * bd->unit));
 
     return ptr;
 }
 
 void buddy_free(void *ctx, void *ptr) {
     struct buddy *bd = ctx;
-    uint32_t unit = bd->unit_shift ? (1 << bd->unit_shift) : (bd->buf_size >> bd->split_shift);
-    uint32_t offset = ((uintptr_t) (ptr) - (uintptr_t) bd->buf) / unit;
+    uint32_t split_shift = bd->info[0];
+    uint32_t offset = ((uintptr_t) (ptr) - (uintptr_t) bd->buf) / bd->unit;
     uint32_t match = 1;
-    uint32_t index = offset + (1 << bd->split_shift);
+    uint32_t index = offset + (1 << split_shift);
 
-    assert(bd && offset >= 0 && offset < (1 << bd->split_shift));
+    assert(bd && offset >= 0 && offset < (1 << split_shift));
 
     for (; bd->info[index]; index = PARENT(index)) {
         match++;
@@ -185,6 +183,7 @@ void buddy2_dump(void *ctx) {
     char canvas[129];
     int i, j;
     uint32_t node_shift, offset;
+    uint32_t split_shift = bd->info[0];
 
     if (bd == NULL) {
         printf("buddy2_dump: (struct buddy2*)self == NULL");
@@ -192,9 +191,9 @@ void buddy2_dump(void *ctx) {
     }
 
     memset(canvas, '_', sizeof(canvas));
-    node_shift = bd->split_shift + 1;
-    uint32_t half = (1 << bd->split_shift);
-    for (i = 1; i < 1 << (bd->split_shift + 1); ++i) {
+    node_shift = split_shift + 1;
+    uint32_t half = (1 << split_shift);
+    for (i = 1; i < 1 << (split_shift + 1); ++i) {
         if (IS_POWER_OF_2(i))
             node_shift--;
 
@@ -209,6 +208,6 @@ void buddy2_dump(void *ctx) {
         }
     }
 
-    canvas[1 << bd->split_shift] = '\0';
+    canvas[1 << split_shift] = '\0';
     puts(canvas);
 }

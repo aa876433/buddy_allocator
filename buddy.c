@@ -184,7 +184,7 @@ void buddy2_dump(void *ctx) {
 
     char canvas[129];
     int i, j;
-    unsigned node_shift, offset;
+    uint32_t node_shift, offset;
 
     if (bd == NULL) {
         printf("buddy2_dump: (struct buddy2*)self == NULL");

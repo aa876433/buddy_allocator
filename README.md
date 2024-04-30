@@ -15,4 +15,4 @@ This C language implementation provides a buddy system for memory management, de
 - `buddy_new()`: Initializes a new buddy system.
 - `buddy_alloc()`: Allocates a memory block of a specified size.
 - `buddy_free()`: Frees a previously allocated memory block.
-- `buddy2_dump()`: Displays the current status of the memory blocks, useful for debugging.
+- `buddy_dump()`: Displays the current status of the memory blocks, useful for debugging.

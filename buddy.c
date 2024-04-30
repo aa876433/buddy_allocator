@@ -177,7 +177,7 @@ void buddy_free(void *ctx, void *ptr) {
     }
 }
 
-void buddy2_dump(void *ctx) {
+void buddy_dump(void *ctx) {
     struct buddy *bd = ctx;
 
     char canvas[129];
